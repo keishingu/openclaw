@@ -62,8 +62,9 @@ function buildMiddlewareFailureResult(): OpenClawAgentToolResult {
 
 export function createAgentToolResultMiddlewareRunner(
   ctx: AgentToolResultMiddlewareContext,
-  handlers: AgentToolResultMiddleware[] = listAgentToolResultMiddlewares(ctx.harness),
+  handlers: AgentToolResultMiddleware[] = listAgentToolResultMiddlewares(ctx.runtime),
 ) {
+  const middlewareContext = { ...ctx, harness: ctx.harness ?? ctx.runtime };
   return {
     async applyToolResultMiddleware(
       event: AgentToolResultMiddlewareEvent,
@@ -71,13 +72,13 @@ export function createAgentToolResultMiddlewareRunner(
       let current = event.result;
       for (const handler of handlers) {
         try {
-          const next = await handler({ ...event, result: current }, ctx);
+          const next = await handler({ ...event, result: current }, middlewareContext);
           if (next?.result) {
             if (isValidMiddlewareToolResult(next.result)) {
               current = next.result;
             } else {
               log.warn(
-                `[${ctx.harness}] discarded invalid tool result middleware output for ${truncateUtf16Safe(
+                `[${ctx.runtime}] discarded invalid tool result middleware output for ${truncateUtf16Safe(
                   event.toolName,
                   120,
                 )}`,
@@ -86,7 +87,7 @@ export function createAgentToolResultMiddlewareRunner(
           }
         } catch {
           log.warn(
-            `[${ctx.harness}] tool result middleware failed for ${truncateUtf16Safe(
+            `[${ctx.runtime}] tool result middleware failed for ${truncateUtf16Safe(
               event.toolName,
               120,
             )}`,
